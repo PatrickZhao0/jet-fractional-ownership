@@ -8,6 +8,11 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "moduleResolution": "node16",
-    "outDir": "dist"
+    "outDir": "dist",
+    "baseUrl": ".",
+    "paths": {
+      "@contractstypes/*": ["types/ethers-contracts/*/index.ts"],
+      "@contractstypes": ["types/ethers-contracts/index.ts"]
+    }
   }
 }
