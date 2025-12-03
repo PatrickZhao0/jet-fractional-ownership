@@ -3,10 +3,9 @@ pragma solidity ^0.8.28;
 
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { Errors } from "./Errors.sol";
 
-contract OwnershipStaking is Ownable {
+contract OwnershipStaking {
     IERC20 public immutable stakingToken;
 
     uint256 public totalStaked;
@@ -29,20 +28,15 @@ contract OwnershipStaking is Ownable {
     event UnStaked(address indexed user, uint256 amount);
     event RightsClaimed(address indexed user, StakerRights rights);
 
-    constructor(address stakingToken_) Ownable(msg.sender) {
+    constructor(address stakingToken_) {
         stakingToken = IERC20(stakingToken_);
-    }
-
-    modifier onlyStaker() {
-        if (msg.sender == owner()) revert Errors.OwnerNotAllowed();
-        _;
     }
 
     /*
     External Functions
     */
 
-    function stake(uint256 amount) external onlyStaker {
+    function stake(uint256 amount) external {
         // Check if the amount is positive
         if (amount <= 0) revert Errors.NonPositiveAmount(amount);
 
@@ -64,7 +58,7 @@ contract OwnershipStaking is Ownable {
         emit Staked(msg.sender, amount);
     }
 
-    function unstake(uint256 amount) external onlyStaker {
+    function unstake(uint256 amount) external {
         // Check if the amount is positive
         if (amount <= 0) revert Errors.NonPositiveAmount(amount);
 
@@ -82,7 +76,7 @@ contract OwnershipStaking is Ownable {
         emit UnStaked(msg.sender, amount);
     }
 
-    function claimRights() external onlyStaker {
+    function claimRights() external {
         StakeInfo memory stakeInfo = stakedUsers[msg.sender];
         // Check if the user has no stake
         if (stakeInfo.amount == 0) revert Errors.InsufficientStake(stakeInfo.amount, 0);
@@ -96,32 +90,18 @@ contract OwnershipStaking is Ownable {
     Getters
     */
 
-    function getStakeInfo(address user) external view onlyOwner returns (StakeInfo memory) {
+    function getStakeInfo(address user) external view returns (StakeInfo memory) {
         return stakedUsers[user];
     }
 
-    function getSelfStakeInfo() external view onlyStaker returns (StakeInfo memory) {
-        return stakedUsers[msg.sender];
-    }
-
-    function getVotingPower(address user) external view onlyOwner returns (uint256) {
+    function getVotingPower(address user) external view returns (uint256) {
         StakeInfo memory s = stakedUsers[user];
         if (totalStaked == 0) return 0;
         return (s.amount * 1e18) / totalStaked;
     }
 
-    function getSelfVotingPower() external view onlyStaker returns (uint256) {
-        StakeInfo memory s = stakedUsers[msg.sender];
-        if (totalStaked == 0) return 0;
-        return (s.amount * 1e18) / totalStaked;
-    }
-
-    function getRights(address user) external view onlyOwner returns (StakerRights memory) {
+    function getRights(address user) external view returns (StakerRights memory) {
         return stakedUsers[user].rights;
-    }
-
-    function getSelfRights() external view onlyStaker returns (StakerRights memory) {
-        return stakedUsers[msg.sender].rights;
     }
 
     /*
