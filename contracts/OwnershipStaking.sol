@@ -71,15 +71,6 @@ contract OwnershipStaking is Ownable {
         // Check if the user has enough stake
         if (stakedUsers[msg.sender].amount < amount) revert Errors.InsufficientStake(stakedUsers[msg.sender].amount, amount);
 
-        // Transfer the tokens from the contract to the user
-        if (!stakingToken.transfer(msg.sender, amount)) {
-            revert Errors.TransferError({
-                from: address(this),
-                to: msg.sender,
-                amount: amount
-            }); 
-        }
-
         // Update the total staked amount in the contract
         totalStaked -= amount;
 
