@@ -63,6 +63,17 @@ describe("OwnershipStaking Unit Tests", function () {
           )
           .withArgs(user1.address);
       });
+      it("should return the staked info of the address", async function () {
+        const { ownershipStaking, user1 } = await networkHelpers.loadFixture(
+          stakedFixture
+        );
+        const info = await ownershipStaking.getStakeInfo(user1.address);
+        expect(info.amount).to.equal(100n);
+        expect(info.stakedAt).to.be.greaterThan(0n);
+        expect(info.rights.votable).to.equal(false);
+        expect(info.rights.profitable).to.equal(false);
+        expect(info.rights.benefitable).to.equal(false);
+      });
     });
 
     describe("getSelfStakeInfo", function () {
@@ -141,6 +152,15 @@ describe("OwnershipStaking Unit Tests", function () {
             "OwnableUnauthorizedAccount"
           )
           .withArgs(user1.address);
+      });
+      it("should return the rights info of the address", async function () {
+        const { ownershipStaking, user1 } = await networkHelpers.loadFixture(
+          stakedFixture
+        );
+        const rights = await ownershipStaking.getRights(user1.address);
+        expect(rights.votable).to.equal(false);
+        expect(rights.profitable).to.equal(false);
+        expect(rights.benefitable).to.equal(false);
       });
     });
     describe("getSelfRights", function () {
