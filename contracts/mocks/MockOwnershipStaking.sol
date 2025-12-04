@@ -10,6 +10,8 @@ contract MockOwnershipStaking is IOwnershipStaking {
     mapping(address => StakeInfo) private stakedUsers;
     mapping(address => uint256) private votingPowers;
 
+    uint256 private _totalStaked;
+
 
     function getStakeInfo(address user) external view returns (StakeInfo memory) {
         return stakedUsers[user];
@@ -25,5 +27,19 @@ contract MockOwnershipStaking is IOwnershipStaking {
 
     function setVotingPower(address user, uint256 votingPower_) external {
         votingPowers[user] = votingPower_;
+    }
+
+    function totalStaked() external view returns (uint256) {
+        return _totalStaked;
+    }
+
+    function setMockData(address user, uint256 amount, bool isProfitable) external {
+        
+        _totalStaked = _totalStaked - stakedUsers[user].amount + amount;
+        
+
+        stakedUsers[user].amount = amount;
+        stakedUsers[user].rights.profitable = isProfitable;
+        
     }
 }
