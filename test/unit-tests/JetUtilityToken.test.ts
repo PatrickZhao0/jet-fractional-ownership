@@ -20,12 +20,25 @@ describe("JET-U Token Tests", function () {
     ]);
     await JetUtilityToken.waitForDeployment();
 
-    // 3. mint USDT
+    // 3. Deploy RevenueDistribution
+
+    const RevenueDistribution = await ethers.deployContract("RevenueDistribution", [
+        MockUSDT.target,
+        owner.address 
+    ]);
+    await RevenueDistribution.waitForDeployment();
+
+    // 4.  Setup Connections 
+    await JetUtilityToken.connect(owner).setRevenueContract(RevenueDistribution.target);
+    
+
+    // 5. mint USDT
     await MockUSDT.mint(buyer.address, 10000n);
 
     return { 
       jetU: JetUtilityToken, 
       usdt: MockUSDT, 
+      revenue: RevenueDistribution, 
       owner, 
       buyer, 
       poorUser, 
@@ -36,10 +49,34 @@ describe("JET-U Token Tests", function () {
 
 // --- Admin Testing ---
   describe("Admin Functions", function () {
+
+    describe("transferOwnership", function () {
+      it("Should revert if owner tries to transfer ownership (Feature Disabled)", async function () {
+        const { jetU, owner, buyer } = await networkHelpers.loadFixture(deployTokenFixture);
+        await expect(jetU.connect(owner).transferOwnership(buyer.address))
+          .to.be.revertedWithCustomError(jetU, "OwnershipTransferDisabled");
+      });
+
+      it("Should revert if non-owner tries to transfer ownership", async function () {
+        const { jetU, attacker, buyer } = await networkHelpers.loadFixture(deployTokenFixture);
+        await expect(jetU.connect(attacker).transferOwnership(buyer.address))
+          .to.be.revertedWithCustomError(jetU, "OwnableUnauthorizedAccount")
+          .withArgs(attacker.address);
+      });
+    });
+
+    describe("renounceOwnership", function () {
+      it("Should revert if owner tries to renounce ownership (Feature Disabled)", async function () {
+        const { jetU, owner } = await networkHelpers.loadFixture(deployTokenFixture);
+        await expect(jetU.connect(owner).renounceOwnership())
+          .to.be.revertedWithCustomError(jetU, "OwnershipTransferDisabled");
+      });
+    });
+      
     //set price
     describe("setPrice", function () {
       it("Should allow owner to set price", async function () {
-        const { jetU, owner } = await networkHelpers.loadFixture(deployTokenFixture) as any;
+        const { jetU, owner } = await networkHelpers.loadFixture(deployTokenFixture);
         const newPrice = 200n;
         await expect(jetU.connect(owner).setPrice(newPrice))
           .to.emit(jetU, "PriceUpdated")
@@ -56,7 +93,7 @@ describe("JET-U Token Tests", function () {
 
       describe("variable: tokenPrice", function () {
           it("should update the tokenPrice, after SPV set a new price", async function () {
-            const { jetU, owner } = await networkHelpers.loadFixture(deployTokenFixture) as any;
+            const { jetU, owner } = await networkHelpers.loadFixture(deployTokenFixture);
             const newPrice = 200n;
             await jetU.connect(owner).setPrice(newPrice);
             expect(await jetU.tokenPrice()).to.equal(newPrice);
@@ -64,7 +101,6 @@ describe("JET-U Token Tests", function () {
       });
     
     });
-
 
     // mint 
     describe("mint", function () {
@@ -123,6 +159,47 @@ describe("JET-U Token Tests", function () {
       });
 
     });
+
+    // SentUSDTtoRevenue
+    describe("SentUSDTtoRevenue", function () {
+      it("Should allow SPV to sent USDT to RevenueDistribution contract", async function () {
+        const { jetU, usdt, revenue, owner } = await networkHelpers.loadFixture(deployTokenFixture);
+        
+        const amountToSend = 500n;
+        await usdt.mint(jetU.target, 1000n);
+        expect(await usdt.balanceOf(jetU.target)).to.equal(1000n);
+        expect(await usdt.balanceOf(revenue.target)).to.equal(0n);
+        await expect(jetU.connect(owner).SentUSDTtoRevenue(amountToSend))
+          .to.emit(revenue, "RevenueDeposited") 
+          .withArgs(amountToSend);
+        expect(await usdt.balanceOf(jetU.target)).to.equal(500n); // 1000 - 500
+        expect(await usdt.balanceOf(revenue.target)).to.equal(amountToSend);
+      });
+
+      it("Should revert if non-owner tries to spend USDT", async function () {
+        const { jetU, attacker } = await networkHelpers.loadFixture(deployTokenFixture);
+        await expect(jetU.connect(attacker).SentUSDTtoRevenue(100n))
+          .to.be.revertedWithCustomError(jetU, "OwnableUnauthorizedAccount")
+          .withArgs(attacker.address);
+      });
+
+      it("Should revert if revenue contract is not set", async function () {
+        const { jetU, owner } = await networkHelpers.loadFixture(deployTokenFixture) as any;
+        await jetU.connect(owner).setRevenueContract(ethers.ZeroAddress);
+        await expect(jetU.connect(owner).SentUSDTtoRevenue(100n))
+          .to.be.revertedWithCustomError(jetU, "NotApproveRevenuecontract");
+      });
+
+    });
+  });
+
+  // decimals
+  describe("decimals", function () {
+    it("Should have 0 decimals", async function () {
+    const { jetU } = await networkHelpers.loadFixture(deployTokenFixture);
+    const decimals = await jetU.decimals();
+    expect(decimals).to.equal(0n);
+    });
   });
 
   // Purchase Testing
@@ -170,21 +247,38 @@ describe("JET-U Token Tests", function () {
     });
 
     it("Should revert if user tries to pay with a different token (balance check)", async function () {
-          const { jetU, usdt, initialPrice } = await networkHelpers.loadFixture(deployTokenFixture) as any;
-          
-          const signers = await ethers.getSigners();
-          const stranger = signers[5]; 
+      const { jetU, usdt, initialPrice } = await networkHelpers.loadFixture(deployTokenFixture);
+      
+      const signers = await ethers.getSigners();
+      const stranger = signers[5]; 
 
-          const MockToken = await ethers.getContractFactory("MockUSDT");
-          const usdc = await MockToken.deploy();
-          await usdc.waitForDeployment();
-          await usdc.mint(stranger.address, 1000000n);
-          const buyAmount = 10n;
-          const totalCost = buyAmount * initialPrice;
-          await usdt.connect(stranger).approve(jetU.target, totalCost);
-          await expect(jetU.connect(stranger).purchase(buyAmount))
-            .to.be.revertedWithCustomError(jetU, "InsufficientBalance")
-            .withArgs(0n, totalCost); 
+      const MockToken = await ethers.getContractFactory("MockUSDT");
+      const usdc = await MockToken.deploy();
+      await usdc.waitForDeployment();
+      await usdc.mint(stranger.address, 1000000n);
+      const buyAmount = 10n;
+      const totalCost = buyAmount * initialPrice;
+      await usdt.connect(stranger).approve(jetU.target, totalCost);
+      await expect(jetU.connect(stranger).purchase(buyAmount))
+        .to.be.revertedWithCustomError(jetU, "InsufficientBalance")
+        .withArgs(0n, totalCost); 
+    });
+
+    it("Should revert with if payment token doesn't follow ERC20", async function () {
+      const { owner, buyer } = await networkHelpers.loadFixture(deployTokenFixture);
+      const initialPrice = 100n;
+      const MockBadToken = await ethers.getContractFactory("MockBadToken");
+      const badToken = await MockBadToken.deploy();
+      await badToken.waitForDeployment();
+      const JetUtilityToken = await ethers.getContractFactory("JetUtilityToken");
+      const jetU_Bad = await JetUtilityToken.deploy(
+          owner.address,
+          badToken.target,
+          initialPrice
+      );
+      await jetU_Bad.waitForDeployment();
+      await expect(jetU_Bad.connect(buyer).purchase(10n))
+        .to.be.revertedWithCustomError(jetU_Bad, "FailedTransfer");
     });
 
     // --- Success Case ---
