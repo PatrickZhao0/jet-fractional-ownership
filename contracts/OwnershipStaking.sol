@@ -3,26 +3,19 @@ pragma solidity ^0.8.28;
 
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { Errors } from "./Errors.sol";
+import { IOwnershipStaking } from "./interfaces/IOwnershipStaking.sol";
 
-contract OwnershipStaking {
+contract OwnershipStaking is IOwnershipStaking {
     IERC20 public immutable stakingToken;
 
     uint256 public totalStaked;
-    
-    struct StakerRights {
-        bool votable;
-        bool profitable;
-        bool benefitable;
-    }
-    
-    struct StakeInfo {
-        uint256 amount;
-        uint256 stakedAt;
-        StakerRights rights;
-    }
 
     mapping(address => StakeInfo) private stakedUsers;
+
+    error NonPositiveAmount(uint256 amount);
+    error InsufficientStake(uint256 balance, uint256 attempted);
+    error OwnerNotAllowed();
+    error TransferFailed();
 
     event Staked(address indexed user, uint256 amount);
     event UnStaked(address indexed user, uint256 amount);
@@ -38,9 +31,10 @@ contract OwnershipStaking {
 
     function stake(uint256 amount) external {
         // Check if the amount is positive
-        if (amount <= 0) revert Errors.NonPositiveAmount(amount);
+        if (amount <= 0) revert NonPositiveAmount(amount);
 
-        stakingToken.transferFrom(msg.sender, address(this), amount);
+        bool success = stakingToken.transferFrom(msg.sender, address(this), amount);
+        if (!success) revert TransferFailed();
 
         // Update the total staked amount in the contract
         totalStaked += amount;
@@ -60,10 +54,10 @@ contract OwnershipStaking {
 
     function unstake(uint256 amount) external {
         // Check if the amount is positive
-        if (amount <= 0) revert Errors.NonPositiveAmount(amount);
+        if (amount <= 0) revert NonPositiveAmount(amount);
 
         // Check if the user has enough stake
-        if (stakedUsers[msg.sender].amount < amount) revert Errors.InsufficientStake(stakedUsers[msg.sender].amount, amount);
+        if (stakedUsers[msg.sender].amount < amount) revert InsufficientStake(stakedUsers[msg.sender].amount, amount);
 
         // Update the total staked amount in the contract
         totalStaked -= amount;
@@ -72,6 +66,14 @@ contract OwnershipStaking {
         stakedUsers[msg.sender].amount -= amount;
         stakedUsers[msg.sender].rights = _computeStakerRight(stakedUsers[msg.sender]);
 
+        if (stakedUsers[msg.sender].amount == 0) {
+            stakedUsers[msg.sender].stakedAt = 0;
+            stakedUsers[msg.sender].rights = StakerRights(false, false, false);
+        }
+
+        bool success = stakingToken.transfer(msg.sender, amount);
+        if (!success) revert TransferFailed();
+
         // Emit the unstaked event if successfully unstaked
         emit UnStaked(msg.sender, amount);
     }
@@ -79,7 +81,7 @@ contract OwnershipStaking {
     function claimRights() external {
         StakeInfo memory stakeInfo = stakedUsers[msg.sender];
         // Check if the user has no stake
-        if (stakeInfo.amount == 0) revert Errors.InsufficientStake(stakeInfo.amount, 0);
+        if (stakeInfo.amount == 0) revert InsufficientStake(stakeInfo.amount, 0);
         
         // Update the user's rights
         stakedUsers[msg.sender].rights = _computeStakerRight(stakeInfo);
