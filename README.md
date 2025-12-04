@@ -23,5 +23,5 @@ pnpm hardhat build
 ## How to Test
 
 ```
-pnpm hardhat test
+pnpm hardhat test mocha --coverage
 ```

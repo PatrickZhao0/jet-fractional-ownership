@@ -49,47 +49,21 @@ describe("OwnershipStaking Unit Tests", function () {
   Tests
    */
   describe("getter functions", function () {
-    describe("getStakedInfo", function () {
-      it("should raise OwnableUnauthorizedAccount Error if called by non-owner", async function () {
+    describe("getStakeInfo", function () {
+      it("should return the staked info of the address", async function () {
         const { ownershipStaking, user1 } = await networkHelpers.loadFixture(
-          initializationFixture
+          stakedFixture
         );
-        await expect(
-          ownershipStaking.connect(user1).getStakeInfo(user1.address)
-        )
-          .to.be.revertedWithCustomError(
-            ownershipStaking,
-            "OwnableUnauthorizedAccount"
-          )
-          .withArgs(user1.address);
+        const info = await ownershipStaking.getStakeInfo(user1.address);
+        expect(info.amount).to.equal(100n);
+        expect(info.stakedAt).to.be.greaterThan(0n);
+        expect(info.rights.votable).to.equal(false);
+        expect(info.rights.profitable).to.equal(false);
+        expect(info.rights.benefitable).to.equal(false);
       });
     });
 
-    describe("getSelfStakeInfo", function () {
-      it("should raise OwnerNotAllowed Error if called by owner", async function () {
-        const { ownershipStaking, owner } = await networkHelpers.loadFixture(
-          initializationFixture
-        );
-        await expect(
-          ownershipStaking.connect(owner).getSelfStakeInfo()
-        ).to.be.revertedWithCustomError(ownershipStaking, "OwnerNotAllowed");
-      });
-    });
     describe("getVotingPower", function () {
-      it("should raise OwnableUnauthorizedAccount Error, if called by non-owner", async function () {
-        const { ownershipStaking, user1 } = await networkHelpers.loadFixture(
-          initializationFixture
-        );
-        await expect(
-          ownershipStaking.connect(user1).getVotingPower(user1.address)
-        )
-          .to.be.revertedWithCustomError(
-            ownershipStaking,
-            "OwnableUnauthorizedAccount"
-          )
-          .withArgs(user1.address);
-      });
-
       it("should return the voting power of the address", async function () {
         const { ownershipStaking, user1, user2 } =
           await networkHelpers.loadFixture(stakedFixture);
@@ -101,56 +75,16 @@ describe("OwnershipStaking Unit Tests", function () {
         );
       });
     });
-    describe("getSelfVotingPower", function () {
-      it("should raise OwnerNotAllowed Error, if called by owner", async function () {
-        const { ownershipStaking, owner } = await networkHelpers.loadFixture(
-          initializationFixture
-        );
-        await expect(
-          ownershipStaking.connect(owner).getSelfVotingPower()
-        ).to.be.revertedWithCustomError(ownershipStaking, "OwnerNotAllowed");
-      });
 
-      it("should return the voting power of the caller", async function () {
-        const { ownershipStaking, user1, user2 } =
-          await networkHelpers.loadFixture(stakedFixture);
-        expect(
-          await ownershipStaking.connect(user1).getSelfVotingPower()
-        ).to.equal(50n * PERCENT);
-        expect(
-          await ownershipStaking.connect(user2).getSelfVotingPower()
-        ).to.equal(50n * PERCENT);
-
-        await ownershipStaking.connect(user2).unstake(100n);
-        expect(
-          await ownershipStaking.connect(user1).getSelfVotingPower()
-        ).to.equal(100n * PERCENT);
-        expect(
-          await ownershipStaking.connect(user2).getSelfVotingPower()
-        ).to.equal(0n * PERCENT);
-      });
-    });
     describe("getRights", function () {
-      it("should raise OwnableUnauthorizedAccount Error if called by non-owner", async function () {
+      it("should return the rights info of the address", async function () {
         const { ownershipStaking, user1 } = await networkHelpers.loadFixture(
-          initializationFixture
+          stakedFixture
         );
-        await expect(ownershipStaking.connect(user1).getRights(user1.address))
-          .to.be.revertedWithCustomError(
-            ownershipStaking,
-            "OwnableUnauthorizedAccount"
-          )
-          .withArgs(user1.address);
-      });
-    });
-    describe("getSelfRights", function () {
-      it("should raise OwnerNotAllowed Error if called by owner", async function () {
-        const { ownershipStaking, owner } = await networkHelpers.loadFixture(
-          initializationFixture
-        );
-        await expect(
-          ownershipStaking.getSelfRights()
-        ).to.be.revertedWithCustomError(ownershipStaking, "OwnerNotAllowed");
+        const rights = await ownershipStaking.getRights(user1.address);
+        expect(rights.votable).to.equal(false);
+        expect(rights.profitable).to.equal(false);
+        expect(rights.benefitable).to.equal(false);
       });
     });
   });
@@ -193,10 +127,12 @@ describe("OwnershipStaking Unit Tests", function () {
       await JETO.connect(user1).approve(ownershipStaking.target, 100n);
       await ownershipStaking.connect(user1).stake(100n);
       expect(
-        (await ownershipStaking.connect(user1).getSelfStakeInfo()).amount
+        (await ownershipStaking.connect(user1).getStakeInfo(user1.address))
+          .amount
       ).to.equal(100n);
       expect(
-        (await ownershipStaking.connect(user1).getSelfStakeInfo()).stakedAt
+        (await ownershipStaking.connect(user1).getStakeInfo(user1.address))
+          .stakedAt
       ).to.not.equal(0);
     });
 
@@ -209,10 +145,10 @@ describe("OwnershipStaking Unit Tests", function () {
       await JETO.connect(user1).approve(ownershipStaking.target, addedAmount);
 
       const stakedAtBefore = (
-        await ownershipStaking.connect(user1).getSelfStakeInfo()
+        await ownershipStaking.connect(user1).getStakeInfo(user1.address)
       ).stakedAt;
       const oldAmount = (
-        await ownershipStaking.connect(user1).getSelfStakeInfo()
+        await ownershipStaking.connect(user1).getStakeInfo(user1.address)
       ).amount;
 
       const tx = await ownershipStaking.connect(user1).stake(addedAmount);
@@ -225,11 +161,19 @@ describe("OwnershipStaking Unit Tests", function () {
         (oldAmount + addedAmount);
 
       const stakedAtAfter = (
-        await ownershipStaking.connect(user1).getSelfStakeInfo()
+        await ownershipStaking.connect(user1).getStakeInfo(user1.address)
       ).stakedAt;
 
       expect(stakedAtAfter).to.be.greaterThan(stakedAtBefore);
       expect(stakedAtAfter).to.equal(expectedStakedAt);
+    });
+
+    it("should transfer the staked amount to the contract", async function () {
+      const { ownershipStaking, JETO, user1 } =
+        await networkHelpers.loadFixture(initializationFixture);
+      await ownershipStaking.connect(user1).stake(100n);
+      expect(await JETO.balanceOf(ownershipStaking.target)).to.equal(100n);
+      expect(await JETO.balanceOf(user1.address)).to.equal(0n);
     });
 
     it("should revert if user JETO token balance is not enough", async function () {
@@ -248,16 +192,6 @@ describe("OwnershipStaking Unit Tests", function () {
       await expect(
         ownershipStaking.connect(user1).stake(0n)
       ).to.revertedWithCustomError(ownershipStaking, "NonPositiveAmount");
-    });
-
-    it("should raise OwnerNotAllowed Error if the owner (SPV) calls stake", async function () {
-      const { JETO, ownershipStaking, owner } =
-        await networkHelpers.loadFixture(initializationFixture);
-      await JETO.mint(owner.address, 100n);
-      await JETO.connect(owner).approve(ownershipStaking.target, 100n);
-      await expect(
-        ownershipStaking.connect(owner).stake(100n)
-      ).to.revertedWithCustomError(ownershipStaking, "OwnerNotAllowed");
     });
   });
 
@@ -288,23 +222,45 @@ describe("OwnershipStaking Unit Tests", function () {
       );
       await ownershipStaking.connect(user1).unstake(100n);
       expect(
-        (await ownershipStaking.connect(user1).getSelfStakeInfo()).amount
+        (await ownershipStaking.connect(user1).getStakeInfo(user1.address))
+          .amount
       ).to.equal(0n);
     });
 
-    it("should not affect StakeInfo.stakedAt after the caller unstakes", async function () {
+    it("should not affect StakeInfo.stakedAt if the caller did not completely unstakes", async function () {
       const { ownershipStaking, user1 } = await networkHelpers.loadFixture(
         stakedFixture
       );
 
       const stakedAtBeforeUnstaked = (
-        await ownershipStaking.connect(user1).getSelfStakeInfo()
+        await ownershipStaking.connect(user1).getStakeInfo(user1.address)
       ).stakedAt;
+
+      await ownershipStaking.connect(user1).unstake(99n);
+      expect(
+        (await ownershipStaking.connect(user1).getStakeInfo(user1.address))
+          .stakedAt
+      ).to.equal(stakedAtBeforeUnstaked);
+    });
+
+    it("should reset StakeInfo.stakedAt if the caller completely unstakes", async function () {
+      const { ownershipStaking, user1 } = await networkHelpers.loadFixture(
+        stakedFixture
+      );
 
       await ownershipStaking.connect(user1).unstake(100n);
       expect(
-        (await ownershipStaking.connect(user1).getSelfStakeInfo()).stakedAt
-      ).to.equal(stakedAtBeforeUnstaked);
+        (await ownershipStaking.connect(user1).getStakeInfo(user1.address))
+          .stakedAt
+      ).to.equal(0);
+    });
+
+    it("should transfer the unstaked amount to the caller", async function () {
+      const { ownershipStaking, user1, JETO } =
+        await networkHelpers.loadFixture(stakedFixture);
+      await ownershipStaking.connect(user1).unstake(100n);
+      expect(await JETO.balanceOf(user1.address)).to.equal(100n);
+      expect(await JETO.balanceOf(ownershipStaking.target)).to.equal(100n);
     });
 
     it("should raise InsufficientStake Error if the unstake amount is greater than the staked amount", async function () {
@@ -324,15 +280,6 @@ describe("OwnershipStaking Unit Tests", function () {
         ownershipStaking.connect(user1).unstake(0n)
       ).to.revertedWithCustomError(ownershipStaking, "NonPositiveAmount");
     });
-
-    it("should raise OwnerNotAllowed Error if the owner (SPV) calls stake", async function () {
-      const { ownershipStaking, owner } = await networkHelpers.loadFixture(
-        stakedFixture
-      );
-      await expect(
-        ownershipStaking.connect(owner).unstake(100n)
-      ).to.revertedWithCustomError(ownershipStaking, "OwnerNotAllowed");
-    });
   });
 
   describe("claimRights Function", function () {
@@ -351,13 +298,15 @@ describe("OwnershipStaking Unit Tests", function () {
       await networkHelpers.time.increase(TEN_DAYS);
       await ownershipStaking.connect(user1).claimRights();
       expect(
-        (await ownershipStaking.connect(user1).getSelfRights()).votable
+        (await ownershipStaking.connect(user1).getRights(user1.address)).votable
       ).to.equal(false);
       expect(
-        (await ownershipStaking.connect(user1).getSelfRights()).profitable
+        (await ownershipStaking.connect(user1).getRights(user1.address))
+          .profitable
       ).to.equal(false);
       expect(
-        (await ownershipStaking.connect(user1).getSelfRights()).benefitable
+        (await ownershipStaking.connect(user1).getRights(user1.address))
+          .benefitable
       ).to.equal(false);
     });
 
@@ -368,13 +317,15 @@ describe("OwnershipStaking Unit Tests", function () {
       await networkHelpers.time.increase(THIRTY_DAYS);
       await ownershipStaking.connect(user1).claimRights();
       expect(
-        (await ownershipStaking.connect(user1).getSelfRights()).votable
+        (await ownershipStaking.connect(user1).getRights(user1.address)).votable
       ).to.equal(true);
       expect(
-        (await ownershipStaking.connect(user1).getSelfRights()).profitable
+        (await ownershipStaking.connect(user1).getRights(user1.address))
+          .profitable
       ).to.equal(false);
       expect(
-        (await ownershipStaking.connect(user1).getSelfRights()).benefitable
+        (await ownershipStaking.connect(user1).getRights(user1.address))
+          .benefitable
       ).to.equal(false);
     });
 
@@ -385,13 +336,15 @@ describe("OwnershipStaking Unit Tests", function () {
       await networkHelpers.time.increase(SIXTY_DAYS);
       await ownershipStaking.connect(user1).claimRights();
       expect(
-        (await ownershipStaking.connect(user1).getSelfRights()).votable
+        (await ownershipStaking.connect(user1).getRights(user1.address)).votable
       ).to.equal(true);
       expect(
-        (await ownershipStaking.connect(user1).getSelfRights()).profitable
+        (await ownershipStaking.connect(user1).getRights(user1.address))
+          .profitable
       ).to.equal(true);
       expect(
-        (await ownershipStaking.connect(user1).getSelfRights()).benefitable
+        (await ownershipStaking.connect(user1).getRights(user1.address))
+          .benefitable
       ).to.equal(false);
     });
 
@@ -402,13 +355,15 @@ describe("OwnershipStaking Unit Tests", function () {
       await networkHelpers.time.increase(NINETY_DAYS);
       await ownershipStaking.connect(user1).claimRights();
       expect(
-        (await ownershipStaking.connect(user1).getSelfRights()).votable
+        (await ownershipStaking.connect(user1).getRights(user1.address)).votable
       ).to.equal(true);
       expect(
-        (await ownershipStaking.connect(user1).getSelfRights()).profitable
+        (await ownershipStaking.connect(user1).getRights(user1.address))
+          .profitable
       ).to.equal(true);
       expect(
-        (await ownershipStaking.connect(user1).getSelfRights()).benefitable
+        (await ownershipStaking.connect(user1).getRights(user1.address))
+          .benefitable
       ).to.equal(true);
     });
   });
