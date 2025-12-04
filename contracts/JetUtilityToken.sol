@@ -6,6 +6,10 @@ import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol"; // Interface for payment token (e.g., USDT)
 import "@openzeppelin/contracts/access/Ownable.sol";
 
+interface IRevenue {
+    function depositRevenue(uint256 amount) external;
+}
+
 contract JetUtilityToken is ERC20, ERC20Burnable, Ownable {
     // --- State Variables (Corresponding to image requirements) ---
     
@@ -14,6 +18,12 @@ contract JetUtilityToken is ERC20, ERC20Burnable, Ownable {
     // 2. Payment token interface (e.g., USDT)
     IERC20 public paymentToken;
 
+    // to Revenue Distribution Contract
+    address public revenueContract;
+    function setRevenueContract(address _revenue) external onlyOwner {
+        revenueContract = _revenue;
+    }
+
 
     // --- Error ---
     error InvalidAddress(); // check payment address 
@@ -21,9 +31,9 @@ contract JetUtilityToken is ERC20, ERC20Burnable, Ownable {
     error InsufficientAllowance(uint256 allowance, uint256 required); // check allowance is enough or not 
     error InsufficientBalance(uint256 available, uint256 required); // check balance is enough or not
     error FailedTransfer(); // check transfer is successful or not 
-    error ErrorTokenPrice(); //check token price
     error CantBurn(); 
-    error CantChangeSPV();
+    error OwnershipTransferDisabled();
+    error NotApproveRevenuecontract();
 
     // --- Events (For frontend interaction) ---
     event TokensPurchased(address indexed buyer, uint256 amountSpent, uint256 tokensReceived);
@@ -117,18 +127,23 @@ contract JetUtilityToken is ERC20, ERC20Burnable, Ownable {
     // 1. Update price
     function setPrice(uint256 _newPrice) external onlyOwner {
         tokenPrice = _newPrice;
-        if (tokenPrice != _newPrice ) revert ErrorTokenPrice();
         emit PriceUpdated(_newPrice);
     }
 
-    // // 2. transfer Ownership
-    // function transferOwnership(address /*newOwner*/) public override onlyOwner {
-    //     revert OwnershipTransferDisabled();
-    // }
+    // 2. Lock SPV Address 
 
-    // // 3. renounceOwnership()
-    // function renounceOwnership() public override onlyOwner {
-    //     revert OwnershipTransferDisabled();
-    // }
+    function transferOwnership(address /*newOwner*/) public override onlyOwner {
+        revert OwnershipTransferDisabled();
+    }
+
+    function renounceOwnership() public override onlyOwner {
+        revert OwnershipTransferDisabled();
+    }
     
+    // 3. send USDT to RevenueDistribution contract
+    function SentUSDTtoRevenue(uint256 amount) external onlyOwner {
+        if (revenueContract == address(0)) revert NotApproveRevenuecontract();
+        paymentToken.approve(revenueContract, amount);
+        IRevenue(revenueContract).depositRevenue(amount);
+    }
 }
