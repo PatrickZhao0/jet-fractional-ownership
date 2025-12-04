@@ -108,7 +108,7 @@ contract JetUtilityToken is ERC20, ERC20Burnable, Ownable {
         _burn(msg.sender, value);
     }
 
-    function burnFrom(address account, uint256 value) public override {
+    function burnFrom(address /*account*/, uint256 /*value*/) public pure override {
         revert CantBurn();
     }
 
@@ -131,12 +131,11 @@ contract JetUtilityToken is ERC20, ERC20Burnable, Ownable {
     }
 
     // 2. Lock SPV Address 
-
-    function transferOwnership(address /*newOwner*/) public override onlyOwner {
+    function transferOwnership(address /*newOwner*/) public view override onlyOwner {
         revert OwnershipTransferDisabled();
     }
 
-    function renounceOwnership() public override onlyOwner {
+    function renounceOwnership() public view override onlyOwner {
         revert OwnershipTransferDisabled();
     }
     
