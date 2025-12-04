@@ -168,6 +168,14 @@ describe("OwnershipStaking Unit Tests", function () {
       expect(stakedAtAfter).to.equal(expectedStakedAt);
     });
 
+    it("should transfer the staked amount to the contract", async function () {
+      const { ownershipStaking, JETO, user1 } =
+        await networkHelpers.loadFixture(initializationFixture);
+      await ownershipStaking.connect(user1).stake(100n);
+      expect(await JETO.balanceOf(ownershipStaking.target)).to.equal(100n);
+      expect(await JETO.balanceOf(user1.address)).to.equal(0n);
+    });
+
     it("should revert if user JETO token balance is not enough", async function () {
       const { ownershipStaking, JETO, user1 } =
         await networkHelpers.loadFixture(initializationFixture);
@@ -219,7 +227,7 @@ describe("OwnershipStaking Unit Tests", function () {
       ).to.equal(0n);
     });
 
-    it("should not affect StakeInfo.stakedAt after the caller unstakes", async function () {
+    it("should not affect StakeInfo.stakedAt if the caller did not completely unstakes", async function () {
       const { ownershipStaking, user1 } = await networkHelpers.loadFixture(
         stakedFixture
       );
@@ -228,11 +236,31 @@ describe("OwnershipStaking Unit Tests", function () {
         await ownershipStaking.connect(user1).getStakeInfo(user1.address)
       ).stakedAt;
 
-      await ownershipStaking.connect(user1).unstake(100n);
+      await ownershipStaking.connect(user1).unstake(99n);
       expect(
         (await ownershipStaking.connect(user1).getStakeInfo(user1.address))
           .stakedAt
       ).to.equal(stakedAtBeforeUnstaked);
+    });
+
+    it("should reset StakeInfo.stakedAt if the caller completely unstakes", async function () {
+      const { ownershipStaking, user1 } = await networkHelpers.loadFixture(
+        stakedFixture
+      );
+
+      await ownershipStaking.connect(user1).unstake(100n);
+      expect(
+        (await ownershipStaking.connect(user1).getStakeInfo(user1.address))
+          .stakedAt
+      ).to.equal(0);
+    });
+
+    it("should transfer the unstaked amount to the caller", async function () {
+      const { ownershipStaking, user1, JETO } =
+        await networkHelpers.loadFixture(stakedFixture);
+      await ownershipStaking.connect(user1).unstake(100n);
+      expect(await JETO.balanceOf(user1.address)).to.equal(100n);
+      expect(await JETO.balanceOf(ownershipStaking.target)).to.equal(100n);
     });
 
     it("should raise InsufficientStake Error if the unstake amount is greater than the staked amount", async function () {
