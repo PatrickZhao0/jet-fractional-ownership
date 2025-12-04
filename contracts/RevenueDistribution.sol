@@ -43,6 +43,7 @@ contract RevenueDistribution is Ownable, ReentrancyGuard {
     event RevenueDeposited(uint256 amount);
     event RoundStarted(uint256 indexed roundId, uint256 totalReward, uint256 rewardPerShare);
     event RewardClaimed(address indexed user, uint256 amount);
+    event EmergencyWithdraw(address indexed to, uint256 amount);
 
     // --- Errors ---
     error TransferFailed();
@@ -50,6 +51,7 @@ contract RevenueDistribution is Ownable, ReentrancyGuard {
     error AlreadyClaimedThisRound();
     error RoundNotActive();
     error NoStakers();
+    error InvalidAddress();
 
     constructor(address _usdt, address _stakingContract) Ownable(msg.sender) {
         usdt = IERC20(_usdt);
@@ -132,5 +134,18 @@ contract RevenueDistribution is Ownable, ReentrancyGuard {
         if (!stakeInfo.rights.profitable) return 0;
 
         return (stakeInfo.amount * currentRoundRewardPerShare) / PRECISION;
+    }
+
+    // transfer USDT
+    function transferUSDT(address to, uint256 amount) external onlyOwner {
+        if (to == address(0)) revert InvalidAddress();
+        if (amount == 0) return;
+
+        uint256 balance = usdt.balanceOf(address(this));
+        if (balance < amount) revert TransferFailed(); 
+        bool success = usdt.transfer(to, amount);
+        if (!success) revert TransferFailed();
+
+        emit EmergencyWithdraw(to, amount);
     }
 }

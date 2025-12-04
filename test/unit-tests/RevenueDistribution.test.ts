@@ -354,7 +354,7 @@ describe("Revenue Distribution Tests", function () {
 
     it("Should revert if user tries to claim twice in the same round", async function () {
       // 1. Load Mock environment
-      const { revenue, staking, jetU, alice, owner, usdt } = await networkHelpers.loadFixture(deployMockFixture);
+      const { revenue, staking, alice, owner, usdt } = await networkHelpers.loadFixture(deployMockFixture);
 
       // 2. Set Alice state
       await staking.setMockData(alice.address, 100n, true);
@@ -465,6 +465,65 @@ describe("Revenue Distribution Tests", function () {
 
       // Second check: 0
       expect(await revenue.checkCurrentRoundReward(alice.address)).to.equal(0n);
+    });
+
+  });
+
+  // 4. Function: transferUSDT
+  describe("transferUSDT", function () {
+    it("Should revert if target address is zero", async function () {
+      const { revenue, owner } = await networkHelpers.loadFixture(deployMockFixture);
+
+      await expect(revenue.connect(owner).transferUSDT(ethers.ZeroAddress, 100n))
+        .to.be.revertedWithCustomError(revenue, "InvalidAddress");
+    });
+
+    it("Should revert if contract balance is less than amount", async function () {
+      const { revenue, owner, alice } = await networkHelpers.loadFixture(deployMockFixture);
+
+      await expect(revenue.connect(owner).transferUSDT(alice.address, 100n))
+        .to.be.revertedWithCustomError(revenue, "TransferFailed");
+    });
+
+    it("Should revert if USDT transfer returns false (MockBadToken)", async function () {
+      const [owner, alice] = await ethers.getSigners();
+
+      const MockBadToken = await ethers.getContractFactory("MockBadToken");
+      const badToken = await MockBadToken.deploy();
+      await badToken.waitForDeployment();
+
+      const Revenue = await ethers.getContractFactory("RevenueDistribution");
+      const badRevenue = await Revenue.deploy(badToken.target, owner.address);
+      await badRevenue.waitForDeployment();
+
+      await expect(badRevenue.connect(owner).transferUSDT(alice.address, 100n))
+        .to.be.revertedWithCustomError(badRevenue, "TransferFailed");
+    });
+
+
+    it("Should revert if non-owner tries to transfer USDT", async function () {
+      const { revenue, attacker, alice } = await networkHelpers.loadFixture(deployMockFixture) as any;
+      
+      await expect(revenue.connect(attacker).transferUSDT(alice.address, 100n))
+        .to.be.revertedWithCustomError(revenue, "OwnableUnauthorizedAccount")
+        .withArgs(attacker.address);
+    });
+
+
+    it("Should allow owner to transfer USDT out of contract", async function () {
+      const { revenue, owner, alice, usdt } = await networkHelpers.loadFixture(deployMockFixture) as any;
+
+
+      await usdt.mint(revenue.target, 1000n);
+      expect(await usdt.balanceOf(revenue.target)).to.equal(1000n);
+
+
+      await expect(revenue.connect(owner).transferUSDT(alice.address, 500n))
+        .to.emit(revenue, "EmergencyWithdraw")
+        .withArgs(alice.address, 500n);
+
+      expect(await usdt.balanceOf(revenue.target)).to.equal(500n);
+      expect(await usdt.balanceOf(alice.address)).to.equal(500n);
     });
 
   });
