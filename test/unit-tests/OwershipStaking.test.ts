@@ -75,18 +75,6 @@ describe("OwnershipStaking Unit Tests", function () {
         );
       });
     });
-
-    describe("getRights", function () {
-      it("should return the rights info of the address", async function () {
-        const { ownershipStaking, user1 } = await networkHelpers.loadFixture(
-          stakedFixture
-        );
-        const rights = await ownershipStaking.getRights(user1.address);
-        expect(rights.votable).to.equal(false);
-        expect(rights.profitable).to.equal(false);
-        expect(rights.benefitable).to.equal(false);
-      });
-    });
   });
 
   describe("stake function", function () {
@@ -282,7 +270,7 @@ describe("OwnershipStaking Unit Tests", function () {
     });
   });
 
-  describe("claimRights Function", function () {
+  describe("claimRights function", function () {
     it("should emit RightsClaimed Event, if someone claims rights successfully", async function () {
       const { ownershipStaking, user1, user2 } =
         await networkHelpers.loadFixture(stakedFixture);
@@ -298,15 +286,16 @@ describe("OwnershipStaking Unit Tests", function () {
       await networkHelpers.time.increase(TEN_DAYS);
       await ownershipStaking.connect(user1).claimRights();
       expect(
-        (await ownershipStaking.connect(user1).getRights(user1.address)).votable
+        (await ownershipStaking.connect(user1).getStakeInfo(user1.address))
+          .rights.votable
       ).to.equal(false);
       expect(
-        (await ownershipStaking.connect(user1).getRights(user1.address))
-          .profitable
+        (await ownershipStaking.connect(user1).getStakeInfo(user1.address))
+          .rights.profitable
       ).to.equal(false);
       expect(
-        (await ownershipStaking.connect(user1).getRights(user1.address))
-          .benefitable
+        (await ownershipStaking.connect(user1).getStakeInfo(user1.address))
+          .rights.benefitable
       ).to.equal(false);
     });
 
@@ -317,15 +306,16 @@ describe("OwnershipStaking Unit Tests", function () {
       await networkHelpers.time.increase(THIRTY_DAYS);
       await ownershipStaking.connect(user1).claimRights();
       expect(
-        (await ownershipStaking.connect(user1).getRights(user1.address)).votable
+        (await ownershipStaking.connect(user1).getStakeInfo(user1.address))
+          .rights.votable
       ).to.equal(true);
       expect(
-        (await ownershipStaking.connect(user1).getRights(user1.address))
-          .profitable
+        (await ownershipStaking.connect(user1).getStakeInfo(user1.address))
+          .rights.profitable
       ).to.equal(false);
       expect(
-        (await ownershipStaking.connect(user1).getRights(user1.address))
-          .benefitable
+        (await ownershipStaking.connect(user1).getStakeInfo(user1.address))
+          .rights.benefitable
       ).to.equal(false);
     });
 
@@ -336,15 +326,16 @@ describe("OwnershipStaking Unit Tests", function () {
       await networkHelpers.time.increase(SIXTY_DAYS);
       await ownershipStaking.connect(user1).claimRights();
       expect(
-        (await ownershipStaking.connect(user1).getRights(user1.address)).votable
+        (await ownershipStaking.connect(user1).getStakeInfo(user1.address))
+          .rights.votable
       ).to.equal(true);
       expect(
-        (await ownershipStaking.connect(user1).getRights(user1.address))
-          .profitable
+        (await ownershipStaking.connect(user1).getStakeInfo(user1.address))
+          .rights.profitable
       ).to.equal(true);
       expect(
-        (await ownershipStaking.connect(user1).getRights(user1.address))
-          .benefitable
+        (await ownershipStaking.connect(user1).getStakeInfo(user1.address))
+          .rights.benefitable
       ).to.equal(false);
     });
 
@@ -355,15 +346,16 @@ describe("OwnershipStaking Unit Tests", function () {
       await networkHelpers.time.increase(NINETY_DAYS);
       await ownershipStaking.connect(user1).claimRights();
       expect(
-        (await ownershipStaking.connect(user1).getRights(user1.address)).votable
+        (await ownershipStaking.connect(user1).getStakeInfo(user1.address))
+          .rights.votable
       ).to.equal(true);
       expect(
-        (await ownershipStaking.connect(user1).getRights(user1.address))
-          .profitable
+        (await ownershipStaking.connect(user1).getStakeInfo(user1.address))
+          .rights.profitable
       ).to.equal(true);
       expect(
-        (await ownershipStaking.connect(user1).getRights(user1.address))
-          .benefitable
+        (await ownershipStaking.connect(user1).getStakeInfo(user1.address))
+          .rights.benefitable
       ).to.equal(true);
     });
   });

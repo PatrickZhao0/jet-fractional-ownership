@@ -9,6 +9,6 @@ contract MockBadToken {
     function transfer(address, uint256) external pure returns (bool) {
         return false;
     }
-    function allowance(address, address) external pure returns (uint256) { return 100000000 ether; }
-    function balanceOf(address) external pure returns (uint256) { return 100000000 ether; }
+    function allowance(address, address) external pure returns (uint256) { return 10000000 ; }
+    function balanceOf(address) external pure returns (uint256) { return 10000000 ; }
 }

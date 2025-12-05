@@ -3,9 +3,10 @@ pragma solidity ^0.8.28;
 
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { IOwnershipStaking } from "./interfaces/IOwnershipStaking.sol";
+import { IStaker } from "./interfaces/IStaker.sol";
+import { IStakeable } from "./interfaces/IStakeable.sol";
 
-contract OwnershipStaking is IOwnershipStaking {
+contract OwnershipStaking is IStaker, IStakeable {
     IERC20 public immutable stakingToken;
 
     uint256 public totalStaked;
@@ -100,10 +101,6 @@ contract OwnershipStaking is IOwnershipStaking {
         StakeInfo memory s = stakedUsers[user];
         if (totalStaked == 0) return 0;
         return (s.amount * 1e18) / totalStaked;
-    }
-
-    function getRights(address user) external view returns (StakerRights memory) {
-        return stakedUsers[user].rights;
     }
 
     /*
