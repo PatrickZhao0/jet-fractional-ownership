@@ -5,7 +5,6 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 contract MockJETO is ERC20 {
     constructor() ERC20("Mock JETO", "mJET-O") {}
-    // Fake JETO Contract(For Unit Test) 
     function mint(address to, uint256 amount) external {
         _mint(to, amount);
     }

@@ -2,7 +2,7 @@
 pragma solidity ^0.8.20;
 
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
-import "./ICompliance.sol";
+import "./interfaces/ICompliance.sol";
 
 error EmptyList();
 error NotKYCVerified(address user);
@@ -33,7 +33,6 @@ contract Compliance is Ownable, ICompliance {
             address user = users[i];
             if (user == address(0)) continue;
             if (kycVerified[user] == status) continue;
-
             kycVerified[user] = status;
             changed[count] = user;
             count++;
