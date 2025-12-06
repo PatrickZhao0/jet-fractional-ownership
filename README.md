@@ -1,4 +1,5 @@
 # Private Jet Fractional Ownership
+<img width="682" height="657" alt="caf7b34e42e0635d1cb08c9cb69c37a7" src="https://github.com/user-attachments/assets/70dc7e04-6483-4971-8988-9815b7d01215" />
 
 ## How to Compile
 
