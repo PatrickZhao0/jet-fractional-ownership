@@ -35,7 +35,6 @@ contract JetOwnershipToken is ERC20Capped, Pausable, Ownable {
         return _DECIMALS;
     }
 
-    
     function pause() external onlyOwner {
         _pause();
     }
@@ -44,22 +43,16 @@ contract JetOwnershipToken is ERC20Capped, Pausable, Ownable {
         _unpause();
     }
 
-    /* ------------------- KYC ------------------- */
-    // @notice batch add,trigger 1 emit
-    /// @param users list of address，one [address]，multi [address1, address2, ...]
     function addKYC(address[] calldata users) external onlyOwner {
         compliance.addKYC(users);
     }
 
-    /// @notice batch remove  
-    /// @param users list of address，one [address]，multi [address1, address2, ...]
     function removeKYC(address[] calldata users) external onlyOwner {
         compliance.removeKYC(users);
     }
 
     function _update(address from, address to, uint256 value) internal override whenNotPaused {
         if (value == 0) revert InvalidAmount();
-        //if (to == address(0)) revert ZeroAddress();
         if (to != address(0) && !compliance.kycVerified(to))
             revert NotKYCVerified(to);
         if (from != address(0) && !compliance.kycVerified(from))
@@ -72,8 +65,6 @@ contract JetOwnershipToken is ERC20Capped, Pausable, Ownable {
         whenNotPaused
         onlyOwner
     {
-        //if (amount == 0) revert InvalidAmount();
-        //if (to == address(0)) revert ZeroAddress();
         if (!compliance.kycVerified(to))
             revert NotKYCVerified(to);
 
