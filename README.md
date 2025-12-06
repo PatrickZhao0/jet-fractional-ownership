@@ -26,6 +26,10 @@ pnpm hardhat build
 pnpm hardhat test mocha --coverage
 ```
 
+## Coverage Report
+
+<img width="800" height="223" alt="Screenshot 2025-12-06 at 06 52 44" src="https://github.com/user-attachments/assets/c6ff9d14-7fcf-4621-88fb-1b6d9b24aed9" />
+
 ## How to Deploy
 
 Make sure you have `SEPOLIA_RPC_URL` and `SEPOLIA_PRIVATE_KEY` in your `.env` file. (See `.env.example` for an example)
